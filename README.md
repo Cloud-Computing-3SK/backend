@@ -50,7 +50,7 @@ curl -X POST http://127.0.0.1:8000/auth/organizations/create/ -H "Content-Type: 
 
 **Expected Response:**
 
-{"message":"Organization successfully created","organization":{"id":"id_user_here","name":"testorg"}}
+{"message":"Organization successfully created","organization":{"id":<id_org_here>,"name":"testorg"}}
 
 **Test Assign User to Organization**
 
@@ -69,7 +69,7 @@ curl -X POST "http://127.0.0.1:8000/auth/organizations/<id_org_here>/assign-user
 
 **Test Get All Members ID by Org**
 
-curl -X GET "http://127.0.0.1:8000/organizations/<id_org_here>/users/"
+curl -X GET "http://127.0.0.1:8000/auth/organizations/<id_org_here>/users/"
 
 **Expected Response**
 
