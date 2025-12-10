@@ -6,15 +6,12 @@ pip install -r requirements.txt
 
 **Run Migrations**
 
+python manage.py makemigrations
 python manage.py migrate
 
 **Start the Server**
 
 python manage.py runserver
-
-**Open PostgreSQL**
-
-psql -U postgres
 
 **Test Registration**
 
@@ -22,7 +19,15 @@ curl -X POST http://127.0.0.1:8000/auth/register/ -H "Content-Type: application/
 
 **Expected Response:**
 
-{"message": "User created successfully"}
+{
+    "message": "User created successfully",
+    "user": {
+        "auth_user_id": 1,
+        "app_user_id": "generated_id_here",
+        "username": "test",
+        "email": "test@example.com"
+    }
+}
 
 **Test Login**
 
@@ -31,20 +36,56 @@ curl -X POST http://127.0.0.1:8000/auth/login/ -H "Content-Type: application/jso
 **Expected Response:**
 
 {
-  "access": "jwt_token_here",
-  "refresh": "refresh_token_here"
+    "refresh": "refresh_token",
+    "access": "access_token",
+    "auth_user_id": "auth_user_id",
+    "app_user_id": "app_user_id",
+    "username": "test",
+    "email": "test@example.com"
 }
 
-**Check registered users in PostgreSQL**
+**Test Create Org**
 
-psql -U myuser -d mydb (pass: mypassword)
-
-SELECT id, username, email FROM auth_user;
+curl -X POST http://127.0.0.1:8000/auth/organizations/create/ -H "Content-Type: application/json" -d "{\"name\":\"testorg\"}"
 
 **Expected Response:**
 
- id | username |      email
-----+----------+------------------
-  1 | test     | test@example.com
-(1 row)
+{"message":"Organization successfully created","organization":{"id":"id_user_here","name":"testorg"}}
 
+**Test Assign User to Organization**
+
+curl -X POST "http://127.0.0.1:8000/auth/organizations/<id_org_here>/assign-user/<id_user_here>/" -H "Content-Type: application/json"
+
+**Expected Response:**
+{
+    "message": "User successfully assigned to organization",
+    "organization": "testorg",
+    "user": {
+        "id": "id_user_here",
+        "username": "test",
+        "email": "test@example.com"
+    }
+}
+
+**Test Get All Members ID by Org**
+
+curl -X GET "http://127.0.0.1:8000/organizations/<id_org_here>/users/"
+
+**Expected Response**
+
+{
+    "message": "Users successfully retrieved",
+    "organization": "testorg",
+    "count": 1,
+    "users": [
+        {
+            "id": "id_user_here",
+            "username": "test",
+            "email": "test@example.com",
+            "organization": {
+                "id": "id_org_here",
+                "name": "testorg"
+            }
+        }
+    ]
+}
