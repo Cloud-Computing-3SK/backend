@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'authentication',
     'rest_framework',
     "corsheaders",
+    "notes",
 ]
 
 MIDDLEWARE = [
@@ -79,12 +80,8 @@ WSGI_APPLICATION = "config.wsgi.application"
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'mydb',
-        'USER': 'myuser',
-        'PASSWORD': 'mypassword',
-        'HOST': 'localhost',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
