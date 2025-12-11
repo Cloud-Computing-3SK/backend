@@ -1,7 +1,7 @@
 import uuid
 from rest_framework.response import Response
 from rest_framework.decorators import api_view
-from rest_framework import status
+from rest_framework import status, permissions
 from django.contrib.auth.models import User as DjangoUser
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -110,12 +110,51 @@ class UserDetailView(APIView):
         return Response(serializer.data)
 
 
+class SearchUserView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        username = request.query_params.get('username', '')
+        
+        if not username:
+            return Response({
+                "error": "Username parameter is required"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Case-insensitive substring search
+        users = AppUser.objects.filter(username__icontains=username)
+        serializer = AppUserSerializer(users, many=True)
+
+        return Response({
+            "message": "Search completed",
+            "count": users.count(),
+            "users": serializer.data
+        }, status=status.HTTP_200_OK)
+
+
 class CreateOrganizationView(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
     def post(self, request):
+        try:
+            app_user = AppUser.objects.get(user=request.user)
+        except AppUser.DoesNotExist:
+            return Response({"error": "AppUser not found"}, status=404)
+
+        # Check if user already created an organization
+        if Organization.objects.filter(users__user=request.user).exists():
+            return Response({
+                "error": "You have already created an organization"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         serializer = OrganizationSerializer(data=request.data)
         
         if serializer.is_valid():
             organization = serializer.save()
+            # Assign creator to the organization
+            app_user.organization = organization
+            app_user.save()
+            
             return Response({
                 "message": "Organization successfully created",
                 "organization": OrganizationSerializer(organization).data
@@ -139,14 +178,20 @@ class OrganizationDetailView(APIView):
 
 
 class ListOrganizationUsersView(APIView):
-    def get(self, request, org_id):
-        try:
-            organization = Organization.objects.get(id=org_id)
-        except Organization.DoesNotExist:
-            return Response({
-                "message": "Organization not found"
-            }, status=status.HTTP_404_NOT_FOUND)
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get(self, request):
+        try:
+            app_user = AppUser.objects.get(user=request.user)
+        except AppUser.DoesNotExist:
+            return Response({"error": "AppUser not found"}, status=404)
+
+        if not app_user.organization:
+            return Response({
+                "message": "You are not part of any organization"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        organization = app_user.organization
         users = AppUser.objects.filter(organization=organization)
         serializer = AppUserSerializer(users, many=True)
 
@@ -159,27 +204,38 @@ class ListOrganizationUsersView(APIView):
 
 
 class AssignUserToOrganizationView(APIView):
-    def post(self, request, org_id, user_id):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, user_id):
         try:
-            organization = Organization.objects.get(id=org_id)
-        except Organization.DoesNotExist:
-            return Response({"message": "Organization not found"}, status=404)
+            assigner = AppUser.objects.get(user=request.user)
+        except AppUser.DoesNotExist:
+            return Response({"error": "AppUser not found"}, status=404)
+
+        # Check if assigner is part of an organization
+        if not assigner.organization:
+            return Response({
+                "error": "You are not part of any organization"
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        organization = assigner.organization
 
         try:
-            user = AppUser.objects.get(id=user_id)
+            user_to_assign = AppUser.objects.get(id=user_id)
         except AppUser.DoesNotExist:
             return Response({"message": "User not found"}, status=404)
 
-        user.organization = organization
-        user.save()
+        # Assign user to the organization
+        user_to_assign.organization = organization
+        user_to_assign.save()
 
         return Response({
             "message": "User successfully assigned to organization",
             "organization": organization.name,
             "user": {
-                "id": str(user.id),
-                "username": user.username,
-                "email": user.email
+                "id": str(user_to_assign.id),
+                "username": user_to_assign.username,
+                "email": user_to_assign.email
             }
         }, status=200)
 
