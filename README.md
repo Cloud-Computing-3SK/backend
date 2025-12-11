@@ -295,4 +295,4 @@ curl -X GET "http://127.0.0.1:8000/api/notes/" \
 }
 ```
 
-> **Note:** Returns all notes from the user's organization (not just their own notes). If user is not part of an organization, returns only their own notes.
+> **Note:** Returns all notes from the user's organization (not just their own notes). If user is not part of an organization.
